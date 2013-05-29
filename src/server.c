@@ -13,7 +13,7 @@
 #include <netinet/in.h>
 
 /* 141.219.153.205 for wopr     */
-/* 141.219.153.206 fpr guardian */
+/* 141.219.153.206 for guardian */
 
 // Global Variables
 int dbgLevel = 0;                  // 0 = none, 1 = basic , 2 = max TODO: Will have to change by signal. 
@@ -48,6 +48,7 @@ int main( int argc , char* argv[] ){
      listen( listenFD , 512 );                                      /* I don't think we'll hit 512 clients.. */
      
      /* ---- Keep listening for clients ---- */
+     int isDone = 1;
      while(1){
 
           length  = sizeof( s2 );
@@ -85,5 +86,5 @@ int main( int argc , char* argv[] ){
 // Writes to standard out
 void writeLog( int dbglvl , char* str ){
      if(dbglvl <= dbgLevel )
-          write( 0 , str , strlen( str );
+          write( 0 , str , strlen( str ) );
 }

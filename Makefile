@@ -1,7 +1,7 @@
 CC = clang
 CFLAGS = -O0 -g -Wall
-SRCS = ./src/client_slave.c ./src/server.c ./src/sockaddrAL.c
-EXECS = ./bin/server ./bin/client
+SRCS = ./src/server.c ./src/client_slave.c ./src/sockaddrAL.c
+EXECS = ./bin/server
 OBJS = $(SRCS:.c=.o)
 
 all: $(SRCS) $(EXECS)

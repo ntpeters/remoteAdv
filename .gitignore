@@ -4,5 +4,11 @@
 # Ignore object files
 *.o
 
-# Ignore vim backup files
+# Ignore vim undo files
 *.un~
+
+# Ignore vim swap files
+*.swp
+
+# Ignore vim backup files
+*~
