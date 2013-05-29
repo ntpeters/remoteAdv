@@ -1,13 +1,16 @@
-.SUFFIXES: .c .o
-CC = gcc
-CCFLAGS = -g -Wall
-EXEC = rserver rclient1 rclient2 cTest
-OBJS =
+CC = clang
+CFLAGS = -O0 -g -Wall
+SRCS = ./src/client_slave.c ./src/server.c ./src/sockaddrAL.c
+EXECS = ./bin/server ./bin/client
+OBJS = $(SRCS:.c=.o)
 
-all: clean rserver
+all: $(SRCS) $(EXECS)
 
-rserver: server.c
-	${CC} ${CCFLAGS} sockaddrAL.c sockaddrAL.h server.c -o rserver
-	
+$(EXECS): $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) -o $@
+
+.c.o:
+	$(CC) $(CFLAGS) $< -o $@
+
 clean:
-	@rm -f ${EXEC} ${OBJS}
+	@rm -f $(EXECS) $(OBJS)
