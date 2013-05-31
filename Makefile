@@ -1,22 +1,14 @@
-CC = gcc 
-CFLAGS = -g -Wall
-SRCS = ./src/server.c ./src/client_slave.c ./src/sockaddrAL.c
+CC = clang
+CFLAGS = -O0 -g -Wall
 EXECS = ./bin/server ./bin/client_slave
-OBJS = $(SRCS:.c=.o)
 
-all: clean $(SRCS) server client
+all: $(EXECS)
 
-server: $(OBJS)
-	$(CC) $(CFLAGS) ./src/server.o -o ./bin/server
-
-client: $(OBJS)
-	$(CC) $(CFLAGS) ./src/client_slave.o -o ./bin/client_slave
-
-# $(EXECS): $(OBJS)
-# 	$(CC) $(CFLAGS) $(OBJS) -o $@
+./bin/%: ./src/%.o ./src/sockaddrAL.o
+	        $(CC) $(CFLAGS) -o $@ $^
 
 .c.o:
-	$(CC) $(CFLAGS) -c $< -o $@
+	        $(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	@rm -f $(EXECS) $(OBJS)
+	        @rm -f $(EXECS) $(OBJS)
