@@ -20,7 +20,7 @@
 // Global Variables
 int dbgLevel = 2;                  // Defined by user: 0 = none, 1 = basic , 2 = max TODO: Will have to change by signal. 
 int server_portnumber = 51739;     // Port must be constant due to the nature of this project
-char* logFile = "log.txt";
+char* logFile = "server.log";
 
 // Function Prototypes
 void writeLog( int loglvl , char* str );
