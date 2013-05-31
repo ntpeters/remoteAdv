@@ -105,8 +105,8 @@ int main( int argc , char* argv[] ){
 
 
 /*
-     Writes output to defined logfile with date/time stamp and
-     associated log level.
+     Writes output to defined logfile and standard out with
+     date/time stamp and associated log level.
 
      Logging Levels:
      -2 : Fatal          - A fatal error has occured: server will exit immediated
@@ -124,7 +124,7 @@ void writeLog( int loglvl , char* str ){
      char* date = getDateString();
 
      // Allocate message variable
-     int msgSize = strlen( str ) + strlen ( date ) + sizeof( strerror( errno ) )+ 25;
+     int msgSize = strlen( str ) + strlen ( date ) + strlen( strerror( errno ) )+ 25;
      char* msg = malloc( msgSize );
 
      if( loglvl == -2 ) {
@@ -132,14 +132,14 @@ void writeLog( int loglvl , char* str ){
           sprintf( msg, "%s\tFATAL : %s\n", date, str);
           // If errno is anything other than "Success", write it to the log.
           if( errno != 0 ) {
-               sprintf( msg, "%s\n", strerror( errno ) );
+               sprintf( msg + strlen( strerror( errno ) ), "%s\n", strerror( errno ) );
           }
           write( log, msg, strlen( msg ) );
      } else if( loglvl == -1 ) {
           sprintf( msg, "%s\tERROR : %s\n", date, str);
           // If errno is anything other than "Success", write it to the log.
           if( errno != 0 ) {
-               sprintf( msg, "%s\n", strerror( errno ) );
+               sprintf( msg + strlen( strerror( errno ) ), "%s\n", strerror( errno ) );
           }
           write( log, msg, strlen( msg ) );
      } else if(loglvl == 0 ) {
@@ -155,6 +155,9 @@ void writeLog( int loglvl , char* str ){
           sprintf( msg, "%s\tDEBUG : %s\n", date, str);
           write( log, msg, strlen( msg ) );
      }
+
+     // Write message to standard out too
+     write( 0, msg, strlen( msg ) );
 
      close(log);
      free(date);
