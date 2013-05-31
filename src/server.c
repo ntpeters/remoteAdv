@@ -18,7 +18,15 @@
 /* 141.219.153.206 for guardian */
 
 // Global Variables
-int dbgLevel = 2;                  // Defined by user: 0 = none, 1 = basic , 2 = max TODO: Will have to change by signal. 
+/*
+     User defined TODO: set by passed arg
+     Debug Levels:
+     0 = none
+     1 = warnings only (default)
+     2 = basic debug
+     3 = verbose debug
+*/
+int dbgLevel = 1;
 int server_portnumber = 51739;     // Port must be constant due to the nature of this project
 char* logFile = "server.log";
 
@@ -28,6 +36,14 @@ char* getDateString();
 
 // Output is standard out
 int main( int argc , char* argv[] ){
+     // Logger tests
+     // writeLog( -2, "Test fatal");
+     // writeLog( -1, "Test error");
+     // writeLog( 0, "Test info");
+     // writeLog( 1, "Test warning");
+     // writeLog( 2, "Test debug");
+     // writeLog( 3, "Test debug-verbose");
+
      
      int listenFD;
      int connectFD;
@@ -49,12 +65,8 @@ int main( int argc , char* argv[] ){
      getsockname( listenFD ,  (struct sockaddr*) &s1 , &length );
      printf( "%d\n", s1.sin_port );                                 /* Print the port number */
      signal( SIGCHLD , SIG_IGN );                                   /* So we don't wait on zombies */
-     listen( listenFD , 512 );                                      /* I don't think we'll hit 512 clients.. */
+     listen( listenFD , 512 );                                     /* I don't think we'll hit 512 clients.. */
 
-     writeLog( -1, "Test error");
-     writeLog( 0, "Test info");
-     writeLog( 1, "Test warn");
-     writeLog( 2, "Test debug");
 
      /* ---- Keep listening for clients ---- */
      int isDone = 1;
@@ -97,10 +109,12 @@ int main( int argc , char* argv[] ){
      associated log level.
 
      Logging Levels:
-     -1 : Error
-     0  : Info
-     1  : Debug-Warnings
-     2  : Debug-All
+     -2 : Fatal          - A fatal error has occured: server will exit immediated
+     -1 : Error          - An error has occured: server will typically not exit
+     0  : Info           - Nessessary information regarding server operation
+     1  : Warnings       - Any circumstance that may not affect normal operation
+     2  : Debug          - Standard debug messages
+     3  : Debug-Verbose  - All debug messages
 */
 void writeLog( int loglvl , char* str ){
      // Open the log file
@@ -113,14 +127,20 @@ void writeLog( int loglvl , char* str ){
      int msgSize = strlen( str ) + strlen ( date ) + sizeof( strerror( errno ) )+ 25;
      char* msg = malloc( msgSize );
 
-     if( loglvl == -1 ) {
-          // Compose log message
+     if( loglvl == -2 ) {
+
+          sprintf( msg, "%s\tFATAL : %s\n", date, str);
+          // If errno is anything other than "Success", write it to the log.
+          if( errno != 0 ) {
+               sprintf( msg, "%s\n", strerror( errno ) );
+          }
+          write( log, msg, strlen( msg ) );
+     } else if( loglvl == -1 ) {
           sprintf( msg, "%s\tERROR : %s\n", date, str);
           // If errno is anything other than "Success", write it to the log.
           if( errno != 0 ) {
                sprintf( msg, "%s\n", strerror( errno ) );
           }
-          // Write message to log
           write( log, msg, strlen( msg ) );
      } else if(loglvl == 0 ) {
           sprintf( msg, "%s\tINFO  : %s\n", date, str);
@@ -131,6 +151,9 @@ void writeLog( int loglvl , char* str ){
      } else if( loglvl == 2 && dbgLevel >= 2 ) {
           sprintf( msg, "%s\tDEBUG : %s\n", date, str);
           write( log, msg, strlen( msg ) );
+     } else if( loglvl == 3 && dbgLevel >= 3 ) {
+          sprintf( msg, "%s\tDEBUG : %s\n", date, str);
+          write( log, msg, strlen( msg ) );
      }
 
      close(log);
@@ -139,7 +162,8 @@ void writeLog( int loglvl , char* str ){
 }
 
 /*
-     Gets the current date/time and returns it as a string.
+     Gets the current date/time and returns it as a string of the form:
+     [yyyy-mm-dd hh:mm:ss]
 */
 char* getDateString() {
      time_t t = time ( NULL );
