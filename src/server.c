@@ -51,6 +51,11 @@ int main( int argc , char* argv[] ){
      signal( SIGCHLD , SIG_IGN );                                   /* So we don't wait on zombies */
      listen( listenFD , 512 );                                      /* I don't think we'll hit 512 clients.. */
 
+     writeLog( -1, "Test error");
+     writeLog( 0, "Test info");
+     writeLog( 1, "Test warn");
+     writeLog( 2, "Test debug");
+
      /* ---- Keep listening for clients ---- */
      int isDone = 1;
      while(1){
@@ -129,9 +134,13 @@ void writeLog( int loglvl , char* str ){
      }
 
      close(log);
+     free(date);
      free(msg);
 }
 
+/*
+     Gets the current date/time and returns it as a string.
+*/
 char* getDateString() {
      time_t t = time ( NULL );
      struct tm *timeinfo = localtime( &t );
