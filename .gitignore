@@ -12,3 +12,6 @@ bin/*
 
 # Ignore vim backup files
 *~
+
+# Ignore log files
+*.log
