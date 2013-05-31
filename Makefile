@@ -11,4 +11,4 @@ all: $(EXECS)
 	        $(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	        @rm -f $(EXECS) $(OBJS)
+	        @rm -f $(EXECS) ./src/*.o 
