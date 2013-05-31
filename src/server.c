@@ -153,7 +153,33 @@ char* getDateString() {
      int min = timeinfo->tm_min;
      int sec = timeinfo->tm_sec;
 
-     sprintf( date, "[%d-%d-%d %d:%d:%d]", year, month, day, hour, min, sec);
+     sprintf( date, "[%d-", year);
+     // Add zero for single digit values
+     if( month < 10) {
+          sprintf( date + strlen( date ), "0%d-", month);
+     } else {
+          sprintf( date + strlen( date ), "%d-", month);
+     }
+     if( day < 10) {
+          sprintf( date + strlen( date ), "0%d ", day);
+     } else {
+          sprintf( date + strlen( date ), "%d ", day);
+     }
+     if( hour < 10) {
+          sprintf( date + strlen( date ), "0%d:", hour);
+     } else {
+          sprintf( date + strlen( date ), "%d:", hour);
+     }
+     if( min < 10) {
+          sprintf( date + strlen( date ), "0%d:", min);
+     } else {
+          sprintf( date + strlen( date ), "%d:", min);
+     }
+     if( sec < 10) {
+          sprintf( date + strlen( date ), "0%d]", sec);
+     } else {
+          sprintf( date + strlen( date ), "%d]", sec);
+     }
 
      return date;
 }
