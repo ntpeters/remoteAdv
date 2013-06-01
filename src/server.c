@@ -55,52 +55,71 @@ int main( int argc , char* argv[] ){
      /* ---- Initialize port and print ---- */
      
      listenFD = socket( AF_INET , SOCK_STREAM , 0 );
+     if( listenFD == -1 ) {
+          writeLog( -2, "Open socket failed" );
+          exit( 1 );
+     }
      
      bzero( (char*) &s1 , sizeof( s1 ) );                           /* Zero out struct */
      s1.sin_family = AF_INET;
      s1.sin_addr.s_addr = INADDR_ANY;
      s1.sin_port = server_portnumber;                               /* Assign a port number */
      
-     bind( listenFD , (struct sockaddr*) &s1 , sizeof(s1) );        /* Bind an availible port to our fd */
+     int bindResult = bind( listenFD , (struct sockaddr*) &s1 , sizeof( s1 ) );        /* Bind an availible port to our fd */
+     if( bindResult == -1 ) {
+          writeLog( -2, "Bind failed" );
+          exit(1);
+     }
+
      length = sizeof( s1 );
      getsockname( listenFD ,  (struct sockaddr*) &s1 , &length );
-     writeLog( 0, "Listening on port: %d", s1.sin_port);                                 /* Print the port number */
-     signal( SIGCHLD , SIG_IGN );                                   /* So we don't wait on zombies */
-     listen( listenFD , 512 );                                     /* I don't think we'll hit 512 clients.. */
 
+     writeLog( 0, "Listening on port: %d", s1.sin_port );            /* Print the port number */
+
+     signal( SIGCHLD , SIG_IGN );                                   /* So we don't wait on zombies */
+     int listenResult = listen( listenFD , 512 );                                      /* I don't think we'll hit 512 clients.. */
+     if( listenResult == -1 ) {
+          writeLog( -2, "Unable to listen" );
+          exit(1);
+     }
 
      /* ---- Keep listening for clients ---- */
-     int isDone = 1;
-     while(1){
+     while( 1 ){
 
           length  = sizeof( s2 );
           connectFD = accept( listenFD , (struct sockaddr*) &s2 , &length );    /* Accept connection */
+          if( connectFD == -1 ) {
+               writeLog( -1, "Connection to client failed" );
+          }
           
           if( !fork() ){                                                        /* Create child      */
                close( listenFD );                                               /* Close one end of the pipe */
-                    printf( "Connection recved \n" );
-                    int opcode = 0;
-                    int retVal = 0;
+
+               writeLog( 2, "Client connection successful");
+
+               int opcode = 0;
                     
-                    retVal = read( connectFD , &opcode , sizeof( int ) );      // Get the opCode
-                    while( 0 < isDone ){
-                         switch( opcode ){
-                         
-                         
-                              default         :
-                                   printf("Invalid opCode\n");
-                                   break;
-                         }
-                         isDone = read( connectFD , &opcode , sizeof( int ) ); // Get the new opCode
-                    } // End of while client actions loop
+               int isDone = 1;
+               while( isDone = read( connectFD , &opcode , sizeof( int ) ) > 0 ) {   // Get the opcode
+                    switch( opcode ) {
                     
-                    if( isDone == -1 )
-                         printf("Server>> Client connection has been lost.\n");
+                    
+                         default         :
+                              writeLog( -1, "Invalid OpCode: %d", opcode );
+                              break;
+                    }
+               } // End of while client actions loop
+               
+               if( isDone == -1 ) {
+                    writeLog( 2, "Client connection has been lost");
+               }
+               
                close( connectFD );
-               printf("Child process is done\n");
-               exit(0);           /* Child exits when done */
+               write( 3, "Child process is done. PID: %d", getpid() );
+               exit( 0 );           /* Child exits when done */
           } // end of child process
      } // end of while
+
      return 0;
 }
 
