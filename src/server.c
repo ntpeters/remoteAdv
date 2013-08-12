@@ -34,17 +34,23 @@ char* logFile = "server.log";
 // Function Prototypes
 void writeLog( int loglvl , char* str, ... );
 char* getDateString();
+int open_c( int connection, char* response );
+int close_c( int connection, char* response );
+int read_c( int connection, char* response );
+int write_c( int connection, char* response );
+int seek_c( int connection, char* response );
+int exec_c( int connection, char* response );
 
 // Output is standard out
 int main( int argc , char* argv[] ){
      // Logger tests
-     // writeLog( -2, "Test fatal");
-     // writeLog( -1, "Test error");
-     // writeLog( 0, "Test info");
-     // writeLog( 1, "Test warning");
-     // writeLog( 2, "Test debug");
-     // writeLog( 3, "Test debug-verbose");
-
+     // writeLog( -2, "Test fatal" );
+     // writeLog( -1, "Test error" );
+     // writeLog( 0, "Test info" );
+     // writeLog( 1, "Test warning" );
+     // writeLog( 2, "Test debug" );
+     // writeLog( 3, "Test debug-verbose" );
+     
      
      int listenFD;
      int connectFD;
@@ -77,7 +83,7 @@ int main( int argc , char* argv[] ){
      writeLog( 0, "Listening on port: %d", s1.sin_port );            /* Print the port number */
 
      signal( SIGCHLD , SIG_IGN );                                   /* So we don't wait on zombies */
-     int listenResult = listen( listenFD , 512 );                                      /* I don't think we'll hit 512 clients.. */
+     int listenResult = listen( listenFD , 512 );                   /* I don't think we'll hit 512 clients.. */
      if( listenResult == -1 ) {
           writeLog( -2, "Unable to listen" );
           exit(1);
@@ -98,16 +104,43 @@ int main( int argc , char* argv[] ){
                writeLog( 2, "Client connection successful");
 
                int opcode = 0;
+               int respSize = 0;
+               char* response = NULL;
+
+               OpHeader opH;
                     
                int isDone = 1;
-               while( isDone = read( connectFD , &opcode , sizeof( int ) ) > 0 ) {   // Get the opcode
+               while( ( isDone = read( connectFD , &opH , sizeof( opcode ) ) ) ) {   // Get the opcode
+                    opcode = opH.opcode;
+                    writeLog( 3, "Opcode Recieved: %d", opcode );
+
                     switch( opcode ) {
-                    
-                    
-                         default         :
+                         case open_call: 
+                              respSize = open_c( connectFD, response );
+                              break;
+                         case close_call:
+                              respSize = close_c( connectFD, response );
+                              break;
+                         case read_call:
+                              respSize = read_c( connectFD, response );
+                              break;
+                         case write_call:
+                              respSize = write_c( connectFD, response );
+                              break;
+                         case seek_call:
+                              respSize = seek_c( connectFD, response );
+                              break;
+                         case exec_call:
+                              respSize = exec_c( connectFD, response );
+                              break;
+                         default:
                               writeLog( -1, "Invalid OpCode: %d", opcode );
                               break;
                     }
+
+                    // TODO: send response to client
+
+                    free( response );
                } // End of while client actions loop
                
                if( isDone == -1 ) {
@@ -115,9 +148,11 @@ int main( int argc , char* argv[] ){
                }
                
                close( connectFD );
-               write( 3, "Child process is done. PID: %d", getpid() );
+               writeLog( 3, "Child process is done. PID: %d", getpid() );
                exit( 0 );           /* Child exits when done */
-          } // end of child process
+          } else {
+               close( connectFD );
+          }
      } // end of while
 
      return 0;
@@ -140,6 +175,11 @@ int main( int argc , char* argv[] ){
      1  : Warnings       - Any circumstance that may not affect normal operation
      2  : Debug          - Standard debug messages
      3  : Debug-Verbose  - All debug messages
+
+     Input:
+     int loglvl - The desired output logging level.  See above table for levels.
+     char* str  - The message to be output. This is a format string.
+     ...        - Variable length list of arguments to be used with the format string.
 */
 void writeLog( int loglvl , char* str, ... ) {
      // Open the log file
@@ -158,7 +198,7 @@ void writeLog( int loglvl , char* str, ... ) {
      char* msg = malloc( msgSize + max_va_list_size );
 
     
-
+     // -2: Fatal
      if( loglvl == -2 ) {
           sprintf( msg, "%s\tFATAL : ", date );
           vsprintf( msg + strlen( msg ), str, args );
@@ -171,6 +211,7 @@ void writeLog( int loglvl , char* str, ... ) {
           write( log, msg, strlen( msg ) );
           // Write message to standard out too
           write( 0, msg, strlen( msg ) );
+     // -1: Error
      } else if( loglvl == -1 ) {
           sprintf( msg, "%s\tERROR : ", date );
           vsprintf( msg + strlen( msg ), str, args );
@@ -183,6 +224,7 @@ void writeLog( int loglvl , char* str, ... ) {
           write( log, msg, strlen( msg ) );
           // Write message to standard out too
           write( 0, msg, strlen( msg ) );
+     // 0: Info
      } else if(loglvl == 0 ) {
           sprintf( msg, "%s\tINFO  : ", date );
           vsprintf( msg + strlen( msg ), str, args );
@@ -191,6 +233,7 @@ void writeLog( int loglvl , char* str, ... ) {
           write( log, msg, strlen( msg ) );
           // Write message to standard out too
           write( 0, msg, strlen( msg ) );
+     // 1: Warning
      } else if( loglvl == 1 && dbgLevel >= 1 ) {
           sprintf( msg, "%s\tWARN  : ", date );
           vsprintf( msg + strlen( msg ), str, args );
@@ -199,12 +242,16 @@ void writeLog( int loglvl , char* str, ... ) {
           write( log, msg, strlen( msg ) );
           // Write message to standard out too
           write( 0, msg, strlen( msg ) );
+     // 2: Debug
      } else if( loglvl == 2 && dbgLevel >= 2 ) {
           sprintf( msg, "%s\tDEBUG : ", date );
           vsprintf( msg + strlen( msg ), str, args );
           sprintf( msg + strlen( msg ), "\n" );
           // Write message to log
           write( log, msg, strlen( msg ) );
+          // Write message to standard out too
+          write( 0, msg, strlen( msg ) );
+     // 3: Verbose
      } else if( loglvl == 3 && dbgLevel >= 3 ) {
           sprintf( msg, "%s\tDEBUG : ", date );
           vsprintf( msg + strlen( msg ), str, args );
@@ -268,4 +315,124 @@ char* getDateString() {
      }
 
      return date;
+}
+
+/*
+     Handles a remote open call.
+
+     Input:
+     int connection - Socket connection to read from.
+     char* response - The constructed response to send back to the client.
+
+     Return Value:
+     The size of the response, or -1 if something fails.
+*/
+int open_c( int connection, char* response ) {
+     writeLog( 3, "Open call recieved from client" );
+
+     int respSize = 0;
+
+     // TODO: Implement this function.
+
+     return respSize;
+}
+
+/*
+     Handles a remote close call.
+
+     Input:
+     int connection - Socket connection to read from.
+     char* response - The constructed response to send back to the client.
+
+     Return Value:
+     The size of the response, or -1 if something fails.
+*/
+int close_c( int connection, char* response ) {
+     writeLog( 3, "Close call recieved from client" );
+
+     int respSize = 0;
+
+     // TODO: Implement this function.
+
+     return respSize;
+}
+
+/*
+     Handles a remote read call.
+
+     Input:
+     int connection - Socket connection to read from.
+     char* response - The constructed response to send back to the client.
+
+     Return Value:
+     The size of the response, or -1 if something fails.
+*/
+int read_c( int connection, char* response ) {
+     writeLog( 3, "Read call recieved from client" );
+
+     int respSize = 0;
+
+     // TODO: Implement this function.
+
+     return respSize;
+}
+
+/*
+     Handles a remote write call.
+
+     Input:
+     int connection - Socket connection to read from.
+     char* response - The constructed response to send back to the client.
+
+     Return Value:
+     The size of the response, or -1 if something fails.
+*/
+int write_c( int connection, char* response ) {
+     writeLog( 3, "Write call recieved from client" );
+
+     int respSize = 0;
+
+     // TODO: Implement this function.
+
+     return respSize;
+}
+
+/*
+     Handles a remote seek call.
+
+     Input:
+     int connection - Socket connection to read from.
+     char* response - The constructed response to send back to the client.
+
+     Return Value:
+     The size of the response, or -1 if something fails.
+*/
+int seek_c( int connection, char* response ) {
+     writeLog( 3, "Seek call recieved from client" );
+
+     int respSize = 0;
+
+     // TODO: Implement this function.
+
+     return respSize;
+}
+
+/*
+     Handles a remote exec call.
+
+     Input:
+     int connection - Socket connection to read from.
+     char* response - The constructed response to send back to the client.
+
+     Return Value:
+     The size of the response, or -1 if something fails.
+*/
+int exec_c( int connection, char* response ) {
+     writeLog( 3, "Exec call recieved from client" );
+
+     int respSize = 0;
+
+     // TODO: Implement this function.
+
+     return respSize;
 }
