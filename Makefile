@@ -10,7 +10,10 @@ server: ./bin/server
 .PHONY: client_slave
 client_slave: ./bin/client_slave
 
-./bin/%: ./src/%.o ./src/sockaddrAL.o
+.PHONY: client_master
+client_master: ./bin/client_master
+
+./bin/%: ./src/%.o ./src/sockaddrAL.o ./src/util.o
 			mkdir -p ./bin/
 	        $(CC) $(CFLAGS) -o $@ $^
 

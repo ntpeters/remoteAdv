@@ -1,5 +1,6 @@
 #include "opCodes.h"
 #include "sockaddrAL.h"
+#include "util.h"
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -11,9 +12,6 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <time.h>
-#include <stdarg.h>
-
 
 /* 141.219.153.205 for wopr     */
 /* 141.219.153.206 for guardian */
@@ -32,8 +30,6 @@ int server_portnumber = 51739;     // Port must be constant due to the nature of
 char* logFile = "server.log";
 
 // Function Prototypes
-void writeLog( int loglvl , char* str, ... );
-char* getDateString();
 int open_c( int connection, char* response );
 int close_c( int connection, char* response );
 int read_c( int connection, char* response );
@@ -43,6 +39,8 @@ int exec_c( int connection, char* response );
 
 // Output is standard out
 int main( int argc , char* argv[] ){
+     setDebugLevel( dbgLevel );
+     setLogFile( logFile );
      // Logger tests
      // writeLog( -2, "Test fatal" );
      // writeLog( -1, "Test error" );
@@ -63,7 +61,7 @@ int main( int argc , char* argv[] ){
      listenFD = socket( AF_INET , SOCK_STREAM , 0 );
      if( listenFD == -1 ) {
           writeLog( -2, "Open socket failed" );
-          exit( 1 );
+          exit(1);
      }
      
      bzero( (char*) &s1 , sizeof( s1 ) );                           /* Zero out struct */
@@ -80,22 +78,32 @@ int main( int argc , char* argv[] ){
      length = sizeof( s1 );
      getsockname( listenFD ,  (struct sockaddr*) &s1 , &length );
 
-     writeLog( 0, "Listening on port: %d", s1.sin_port );            /* Print the port number */
+     writeLog( 0, "Listening on port: %d", s1.sin_port );           /* Print the port number */
 
      signal( SIGCHLD , SIG_IGN );                                   /* So we don't wait on zombies */
-     int listenResult = listen( listenFD , 512 );                   /* I don't think we'll hit 512 clients.. */
+     int listenResult = listen( listenFD , max_connections );       /* I don't think we'll hit 512 clients.. */
      if( listenResult == -1 ) {
           writeLog( -2, "Unable to listen" );
           exit(1);
      }
 
      /* ---- Keep listening for clients ---- */
-     while( 1 ){
+     while(1) {
 
           length  = sizeof( s2 );
           connectFD = accept( listenFD , (struct sockaddr*) &s2 , &length );    /* Accept connection */
           if( connectFD == -1 ) {
                writeLog( -1, "Connection to client failed" );
+          } else {
+               int client_type = 0;
+               read( connectFD, &client_type, sizeof( client_type ) );
+               int resp = 1;
+               write( connectFD, &resp, sizeof( resp ) );
+               addInfo( s2, client_type );
+               char* message = (char*)malloc(5);
+               message = getClientList( message );
+               writeLog( 2, "Client List:%s", message );
+               free( message );
           }
           
           if( !fork() ){                                                        /* Create child      */
@@ -148,173 +156,16 @@ int main( int argc , char* argv[] ){
                }
                
                close( connectFD );
+               deleteInfo( s2 );
                writeLog( 3, "Child process is done. PID: %d", getpid() );
                exit( 0 );           /* Child exits when done */
           } else {
                close( connectFD );
+               deleteInfo( s2 );
           }
      } // end of while
 
      return 0;
-}
-
-
-/*
-     Writes output to defined logfile and standard out with
-     date/time stamp and associated log level.
-     
-     Can take formatted string like printf, with a varialbe sized list of
-     variables.
-
-     Always adds new line to output.
-
-     Logging Levels:
-     -2 : Fatal          - A fatal error has occured: server will exit immediately
-     -1 : Error          - An error has occured: server will typically not exit
-     0  : Info           - Nessessary information regarding server operation
-     1  : Warnings       - Any circumstance that may not affect normal operation
-     2  : Debug          - Standard debug messages
-     3  : Debug-Verbose  - All debug messages
-
-     Input:
-     int loglvl - The desired output logging level.  See above table for levels.
-     char* str  - The message to be output. This is a format string.
-     ...        - Variable length list of arguments to be used with the format string.
-*/
-void writeLog( int loglvl , char* str, ... ) {
-     // Open the log file
-     int log = open( logFile, O_CREAT | O_APPEND | O_RDWR, 0664 );
-
-     // Get current date/time
-     char* date = getDateString();
-
-     // Prepare variable length args lis
-     va_list args;
-     va_start( args, str ); 
-     int max_va_list_size = 250;  // No way to determine size of list.  250 should be a good ceiling.
-
-     // Allocate message variable
-     int msgSize = strlen( str ) + strlen ( date ) + strlen( strerror( errno ) ) + 10;  // 10 char buffer to prevent overflow
-     char* msg = malloc( msgSize + max_va_list_size );
-
-    
-     // -2: Fatal
-     if( loglvl == -2 ) {
-          sprintf( msg, "%s\tFATAL : ", date );
-          vsprintf( msg + strlen( msg ), str, args );
-          sprintf( msg + strlen( msg ), "\n" );
-          // If errno is anything other than "Success", write it to the log.
-          if( errno != 0 ) {
-               sprintf( msg + strlen( strerror( errno ) ), "%s\n", strerror( errno ) );
-          }
-          // Write message to log
-          write( log, msg, strlen( msg ) );
-          // Write message to standard out too
-          write( 0, msg, strlen( msg ) );
-     // -1: Error
-     } else if( loglvl == -1 ) {
-          sprintf( msg, "%s\tERROR : ", date );
-          vsprintf( msg + strlen( msg ), str, args );
-          sprintf( msg + strlen( msg ), "\n" );
-          // If errno is anything other than "Success", write it to the log.
-          if( errno != 0 ) {
-               sprintf( msg + strlen( strerror( errno ) ), "%s\n", strerror( errno ) );
-          }
-          // Write message to log
-          write( log, msg, strlen( msg ) );
-          // Write message to standard out too
-          write( 0, msg, strlen( msg ) );
-     // 0: Info
-     } else if(loglvl == 0 ) {
-          sprintf( msg, "%s\tINFO  : ", date );
-          vsprintf( msg + strlen( msg ), str, args );
-          sprintf( msg + strlen( msg ), "\n" );
-          // Write message to log
-          write( log, msg, strlen( msg ) );
-          // Write message to standard out too
-          write( 0, msg, strlen( msg ) );
-     // 1: Warning
-     } else if( loglvl == 1 && dbgLevel >= 1 ) {
-          sprintf( msg, "%s\tWARN  : ", date );
-          vsprintf( msg + strlen( msg ), str, args );
-          sprintf( msg + strlen( msg ), "\n" );
-          // Write message to log
-          write( log, msg, strlen( msg ) );
-          // Write message to standard out too
-          write( 0, msg, strlen( msg ) );
-     // 2: Debug
-     } else if( loglvl == 2 && dbgLevel >= 2 ) {
-          sprintf( msg, "%s\tDEBUG : ", date );
-          vsprintf( msg + strlen( msg ), str, args );
-          sprintf( msg + strlen( msg ), "\n" );
-          // Write message to log
-          write( log, msg, strlen( msg ) );
-          // Write message to standard out too
-          write( 0, msg, strlen( msg ) );
-     // 3: Verbose
-     } else if( loglvl == 3 && dbgLevel >= 3 ) {
-          sprintf( msg, "%s\tDEBUG : ", date );
-          vsprintf( msg + strlen( msg ), str, args );
-          sprintf( msg + strlen( msg ), "\n" );
-          // Write message to log
-          write( log, msg, strlen( msg ) );
-          // Write message to standard out too
-          write( 0, msg, strlen( msg ) );
-     }
-
-     // free args list
-     va_end( args );
-
-     close( log );
-     free( date );
-     free( msg );
-}
-
-/*
-     Gets the current date/time and returns it as a string of the form:
-     [yyyy-mm-dd hh:mm:ss]
-*/
-char* getDateString() {
-     time_t t = time ( NULL );
-     struct tm *timeinfo = localtime( &t );
-     char* date = malloc( 100 );
-
-     int year = timeinfo->tm_year + 1900;
-     int month = timeinfo->tm_mon + 1;
-     int day = timeinfo->tm_mday;
-     int hour = timeinfo->tm_hour;
-     int min = timeinfo->tm_min;
-     int sec = timeinfo->tm_sec;
-
-     sprintf( date, "[%d-", year );
-     // Add zero for single digit values
-     if( month < 10) {
-          sprintf( date + strlen( date ), "0%d-", month );
-     } else {
-          sprintf( date + strlen( date ), "%d-", month );
-     }
-     if( day < 10) {
-          sprintf( date + strlen( date ), "0%d ", day );
-     } else {
-          sprintf( date + strlen( date ), "%d ", day );
-     }
-     if( hour < 10) {
-          sprintf( date + strlen( date ), "0%d:", hour );
-     } else {
-          sprintf( date + strlen( date ), "%d:", hour );
-     }
-     if( min < 10) {
-          sprintf( date + strlen( date ), "0%d:", min );
-     } else {
-          sprintf( date + strlen( date ), "%d:", min );
-     }
-     if( sec < 10) {
-          sprintf( date + strlen( date ), "0%d]", sec );
-     } else {
-          sprintf( date + strlen( date ), "%d]", sec );
-     }
-
-     return date;
 }
 
 /*

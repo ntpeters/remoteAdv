@@ -50,19 +50,38 @@ int main(){
     	exit(1);
     }
 
-    OpHeader opH = {
-    	.opcode = 1,
-    	.open_c = {
-    		.flags = 0,
-    		.mode = 0777,
-    		.str_len = 0,
+    int type = type_client_slave;
+    // Send client type to server
+    write( sockfd, &type, sizeof( type_client_slave ) );
+
+    OpHeader command;
+
+    // Wait to recieve commands
+    while(1) {
+    	// while( read( sockfd, &command, sizeof( command ) ) > 0 ) {
+    	// 	printf(".");
+    	// }
+
+    	int in = 0;
+    	scanf( "%d", &in );
+    	if( in == 1 ){
+    		break;
     	}
-    };
-    //int op = 1;
-    int msgSize = sizeof( opH );
-    char* msg = (char*)malloc( msgSize );
-    memcpy( msg, &opH, sizeof(opH));
-    write( sockfd, msg, sizeof( msgSize ) );
+    }
+
+    // OpHeader opH = {
+    // 	.opcode = 1,
+    // 	.open_c = {
+    // 		.flags = 0,
+    // 		.mode = 0777,
+    // 		.str_len = 0,
+    // 	}
+    // };
+    // //int op = 1;
+    // int msgSize = sizeof( opH );
+    // char* msg = (char*)malloc( msgSize );
+    // memcpy( msg, &opH, sizeof(opH));
+    // write( sockfd, msg, sizeof( msgSize ) );
 
 	// Close the connection to the server
 	close(sockfd);

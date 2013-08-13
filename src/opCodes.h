@@ -19,6 +19,7 @@
 #define c_masterlist          23
 #define c_master_release      24
 #define c_master_set_dbglvl   25
+#define c_master_kill_client  99
 
 #include <sys/stat.h>
 #include <sys/socket.h>
