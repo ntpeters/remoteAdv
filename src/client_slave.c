@@ -1,4 +1,5 @@
 #include "opCodes.h"
+#include "util.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>
@@ -10,14 +11,35 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <signal.h>
+
+char*	server_ip	= "127.0.0.1";		/* Just for testing. Change this later*/
+										/* 141.219.153.205 for wopr     */
+										/* 141.219.153.206 for guardian */
+										/* 54.214.246.148 for my Amazon EC2 instance */
+int 	server_port	= 51739;
+int 	dbgLevel 	= 3;
+char* 	logFile 	= "slave.log";
+char*	version 	= "Development Build";
+int 	client_type	= type_client_slave;
+
+// Function Prototypes
+int authenticate( int sockfd );
+int open_c( int connection, OpHeader command, char* response );
+int close_c( int connection, OpHeader command, char* response );
+int read_c( int connection, OpHeader command, char* response );
+int write_c( int connection, OpHeader command, char* response );
+int seek_c( int connection, OpHeader command, char* response );
+int exec_c( int connection, OpHeader command, char* response );
+   
 
 /* Slave Client
    Takes no parameters */
-
-char*	server_ip	= "127.0.0.1";		/* Just for testing. Change this later*/
-int 	server_port	= 51739;
-   
 int main(){
+	setDebugLevel( dbgLevel );
+	setLogFile( logFile );
+
+	writeLog( 0, "Starting remoteAdv Slave Client - Version: %s", version );
 	
 	// Gets a hostent struct containing data about the given host
 	struct hostent *server = gethostbyname( server_ip );
@@ -50,41 +72,199 @@ int main(){
     	exit(1);
     }
 
-    int type = type_client_slave;
-    // Send client type to server
-    write( sockfd, &type, sizeof( type_client_slave ) );
+    int auth_result = authenticate( sockfd );
+    if( auth_result == -1 ) {
+    	writeLog( -1, "Server authentication failed" );
+    	exit(1);
+    } else {
+    	writeLog( 2, "Server connection successful" );
+    	writeLog( 3, "Connected to server at '%s:%d'", server_ip, server_port );
+    }
 
     OpHeader command;
 
     // Wait to recieve commands
-    while(1) {
-    	// while( read( sockfd, &command, sizeof( command ) ) > 0 ) {
-    	// 	printf(".");
-    	// }
+	while( read( sockfd, &command, sizeof( command ) ) != -1 ) {
+		int respSize = 0;
+		char* response = NULL;
+		
+		int opcode = command.opcode;
+		writeLog( 3, "Opcode Recieved: %d", opcode );
 
-    	int in = 0;
-    	scanf( "%d", &in );
-    	if( in == 1 ){
-    		break;
-    	}
-    }
-
-    // OpHeader opH = {
-    // 	.opcode = 1,
-    // 	.open_c = {
-    // 		.flags = 0,
-    // 		.mode = 0777,
-    // 		.str_len = 0,
-    // 	}
-    // };
-    // //int op = 1;
-    // int msgSize = sizeof( opH );
-    // char* msg = (char*)malloc( msgSize );
-    // memcpy( msg, &opH, sizeof(opH));
-    // write( sockfd, msg, sizeof( msgSize ) );
+		switch( opcode ) {
+            case open_call: 
+                respSize = open_c( sockfd, command, response );
+                break;
+            case close_call:
+                respSize = close_c( sockfd, command, response );
+                break;
+            case read_call:
+                respSize = read_c( sockfd, command, response );
+                break;
+            case write_call:
+                respSize = write_c( sockfd, command, response );
+                break;
+            case seek_call:
+                respSize = seek_c( sockfd, command, response );
+                break;
+            case exec_call:
+                respSize = exec_c( sockfd, command, response );
+                break;
+            default:
+                writeLog( -1, "Invalid OpCode: %d", opcode );
+                break;
+        }
+	}
 
 	// Close the connection to the server
 	close(sockfd);
 
     return 0;
+}
+
+/*
+	Basic authentication when connecting to the server.
+	This sends the client type to the server, and expects
+	a certain response from the server.
+
+	Input:
+	int sockfd - The socket connection to the server
+
+	Return:
+	0  - successful connection
+	-1 - connection failed
+*/
+int authenticate( int sockfd ) {
+	int response = 0;
+
+	// Send client type to server
+    write( sockfd, &client_type, sizeof( client_type ) );
+    // Recieve response from server
+    read( sockfd, &response, sizeof( response ) );
+
+    if( response == type_server ) {
+    	return 0;
+    } else { 
+    	return -1;
+    }
+}
+
+/*
+     Handles a remote open call.
+
+     Input:
+     int connection - Socket connection to read from.
+     char* response - The constructed response to send back to the client.
+
+     Return Value:
+     The size of the response, or -1 if something fails.
+*/
+int open_c( int connection, OpHeader command, char* response ) {
+     writeLog( 3, "Open call recieved from client" );
+
+     int respSize = 0;
+
+     // TODO: Implement this function.
+
+     return respSize;
+}
+
+/*
+     Handles a remote close call.
+
+     Input:
+     int connection - Socket connection to read from.
+     char* response - The constructed response to send back to the client.
+
+     Return Value:
+     The size of the response, or -1 if something fails.
+*/
+int close_c( int connection, OpHeader command, char* response ) {
+     writeLog( 3, "Close call recieved from client" );
+
+     int respSize = 0;
+
+     // TODO: Implement this function.
+
+     return respSize;
+}
+
+/*
+     Handles a remote read call.
+
+     Input:
+     int connection - Socket connection to read from.
+     char* response - The constructed response to send back to the client.
+
+     Return Value:
+     The size of the response, or -1 if something fails.
+*/
+int read_c( int connection, OpHeader command, char* response ) {
+     writeLog( 3, "Read call recieved from client" );
+
+     int respSize = 0;
+
+     // TODO: Implement this function.
+
+     return respSize;
+}
+
+/*
+     Handles a remote write call.
+
+     Input:
+     int connection - Socket connection to read from.
+     char* response - The constructed response to send back to the client.
+
+     Return Value:
+     The size of the response, or -1 if something fails.
+*/
+int write_c( int connection, OpHeader command, char* response ) {
+     writeLog( 3, "Write call recieved from client" );
+
+     int respSize = 0;
+
+     // TODO: Implement this function.
+
+     return respSize;
+}
+
+/*
+     Handles a remote seek call.
+
+     Input:
+     int connection - Socket connection to read from.
+     char* response - The constructed response to send back to the client.
+
+     Return Value:
+     The size of the response, or -1 if something fails.
+*/
+int seek_c( int connection, OpHeader command, char* response ) {
+     writeLog( 3, "Seek call recieved from client" );
+
+     int respSize = 0;
+
+     // TODO: Implement this function.
+
+     return respSize;
+}
+
+/*
+     Handles a remote exec call.
+
+     Input:
+     int connection - Socket connection to read from.
+     char* response - The constructed response to send back to the client.
+
+     Return Value:
+     The size of the response, or -1 if something fails.
+*/
+int exec_c( int connection, OpHeader command, char* response ) {
+     writeLog( 3, "Exec call recieved from client" );
+
+     int respSize = 0;
+
+     // TODO: Implement this function.
+
+     return respSize;
 }

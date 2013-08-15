@@ -1,6 +1,6 @@
 CC = clang
 CFLAGS = -O0 -g -Wall
-EXECS = ./bin/server ./bin/client_slave
+EXECS = ./bin/server ./bin/client_slave ./bin/client_master
 
 all: $(EXECS)
 

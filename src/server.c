@@ -12,13 +12,17 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <stdarg.h>
+#include <getopt.h>
+#include <stdbool.h>
 
 /* 141.219.153.205 for wopr     */
 /* 141.219.153.206 for guardian */
+/* 54.214.246.148 for my Amazon EC2 instance */
 
 // Global Variables
 /*
-     User defined TODO: set by passed arg
+     User defined
      Debug Levels:
      0 = none
      1 = warnings only (default)
@@ -28,28 +32,62 @@
 int dbgLevel = 3;
 int server_portnumber = 51739;     // Port must be constant due to the nature of this project
 char* logFile = "server.log";
+char* version = "Development Build";
+int silentMode = 0;
 
 // Function Prototypes
-int open_c( int connection, char* response );
-int close_c( int connection, char* response );
-int read_c( int connection, char* response );
-int write_c( int connection, char* response );
-int seek_c( int connection, char* response );
-int exec_c( int connection, char* response );
+void printHelp();
+void handleCommand( int command, int connectFD );
 
 // Output is standard out
-int main( int argc , char* argv[] ){
+int main( int argc , char* argv[] ) {
+
+     // Handle command line arguments
+     char* short_options = "d:hl:v";
+     struct option long_options[] = {
+          { "silent",    no_argument,        &silentMode,     1  },
+          { "debug",     required_argument,  0,              'd' },
+          { "help",      no_argument,        0,              'h' },
+          { "logfile",   required_argument,  0,              'l' },
+          { "version",   no_argument,        0,              'v' },
+          { 0,           0,                  0,              0   }
+     };
+     int longIndex = 0;
+   
+     // Get first option
+     char cmdOpt = getopt_long( argc, argv, short_options, long_options, &longIndex );
+     while( cmdOpt != -1 ) {
+
+          switch( cmdOpt ) {
+               case 'd':
+                    dbgLevel = atoi( optarg );
+                    break;
+               case 'l':
+                    logFile = optarg;
+                    break;
+               case 'v':
+                    printf("remoteAdv Version: %s\n", version);
+                    exit(0);
+               case 'h':
+               case '?':             // Fall-through intentional
+                    printHelp();
+                    exit(0);
+               default:
+                    break;
+          }
+          // Get next option
+          cmdOpt = getopt_long( argc, argv, short_options, long_options, &longIndex );
+     }
+
+     // Initilize settings based on argument input
      setDebugLevel( dbgLevel );
      setLogFile( logFile );
-     // Logger tests
-     // writeLog( -2, "Test fatal" );
-     // writeLog( -1, "Test error" );
-     // writeLog( 0, "Test info" );
-     // writeLog( 1, "Test warning" );
-     // writeLog( 2, "Test debug" );
-     // writeLog( 3, "Test debug-verbose" );
-     
-     
+     setSilentMode( silentMode );
+
+
+     // Begin setting up server
+     writeLog( 0, "Starting remoteAdv Server - Version: %s", version );
+
      int listenFD;
      int connectFD;
      socklen_t length;
@@ -97,61 +135,54 @@ int main( int argc , char* argv[] ){
           } else {
                int client_type = 0;
                read( connectFD, &client_type, sizeof( client_type ) );
-               int resp = 1;
-               write( connectFD, &resp, sizeof( resp ) );
-               addInfo( s2, client_type );
-               char* message = (char*)malloc(5);
-               message = getClientList( message );
-               writeLog( 2, "Client List:%s", message );
-               free( message );
+               int response = type_server;
+               write( connectFD, &response, sizeof( response ) );
+               addInfo( s2, client_type, connectFD );
+               writeLog( 3, "Client added. Descriptor: %d", connectFD );
+
+               char* list = (char*)malloc(100);
+               list = getClientListString( list, sizeof( list ) );
           }
           
           if( !fork() ){                                                        /* Create child      */
                close( listenFD );                                               /* Close one end of the pipe */
 
-               writeLog( 2, "Client connection successful");
+               writeLog( 2, "Client connection successful" );
+               struct client_info client = getClientInfo( getClientListSize() - 1 );
+               writeLog( 3, "Connected to '%s' client at '%s:%d'", client.type, client.ip, client.port );
 
-               int opcode = 0;
-               int respSize = 0;
-               char* response = NULL;
+               int select = 0;
+               int dataRead = read( connectFD , &select, sizeof( int ) );        // Get the first opcode
+               
+               OpHeader op;
+               int command;
 
-               OpHeader opH;
-                    
-               int isDone = 1;
-               while( ( isDone = read( connectFD , &opH , sizeof( opcode ) ) ) ) {   // Get the opcode
-                    opcode = opH.opcode;
-                    writeLog( 3, "Opcode Recieved: %d", opcode );
+               while( dataRead ) {
+                    switch( select ) {
+                         case opcode_sent:
+                              read( connectFD, &op, sizeof( op ) );
 
-                    switch( opcode ) {
-                         case open_call: 
-                              respSize = open_c( connectFD, response );
+                              int connection = getConnection( 0 );
+                              write( connection, &op, sizeof( op ) );
+                              writeLog( 3, "Opcode '%d' sent to slave client", op.opcode );
                               break;
-                         case close_call:
-                              respSize = close_c( connectFD, response );
-                              break;
-                         case read_call:
-                              respSize = read_c( connectFD, response );
-                              break;
-                         case write_call:
-                              respSize = write_c( connectFD, response );
-                              break;
-                         case seek_call:
-                              respSize = seek_c( connectFD, response );
-                              break;
-                         case exec_call:
-                              respSize = exec_c( connectFD, response );
+                         case command_sent:
+                              read( connectFD, &command, sizeof( command ) );
+                              writeLog( 3, "Recieved command '%d' from master client", command );
+                              handleCommand( command, connectFD );
                               break;
                          default:
-                              writeLog( -1, "Invalid OpCode: %d", opcode );
                               break;
                     }
 
                     // TODO: send response to client
 
-                    free( response );
+                    // Get the next opcode
+                    dataRead = read( connectFD , &select, sizeof( int ) );
+
                } // End of while client actions loop
                
-               if( isDone == -1 ) {
+               if( dataRead == -1 ) {
                     writeLog( 2, "Client connection has been lost");
                }
                
@@ -159,9 +190,6 @@ int main( int argc , char* argv[] ){
                deleteInfo( s2 );
                writeLog( 3, "Child process is done. PID: %d", getpid() );
                exit( 0 );           /* Child exits when done */
-          } else {
-               close( connectFD );
-               deleteInfo( s2 );
           }
      } // end of while
 
@@ -169,121 +197,74 @@ int main( int argc , char* argv[] ){
 }
 
 /*
-     Handles a remote open call.
-
-     Input:
-     int connection - Socket connection to read from.
-     char* response - The constructed response to send back to the client.
-
-     Return Value:
-     The size of the response, or -1 if something fails.
+     Handles printing out the help dialog
 */
-int open_c( int connection, char* response ) {
-     writeLog( 3, "Open call recieved from client" );
-
-     int respSize = 0;
-
-     // TODO: Implement this function.
-
-     return respSize;
+void printHelp() {
+    printf( "remoteAdv Server - %s\n"
+            "\n"
+            "Usage:\tserver [arguments]\n"
+            "\n"
+            "Arguments:\n"
+            "\t-d [level]\t\tSets the debug level:\n"
+            "\t\t\t\t\t0 - No debug output\n"
+            "\t\t\t\t\t1 - Warnings only (default)\n"
+            "\t\t\t\t\t2 - Basic debug output\n"
+            "\t\t\t\t\t3 - Verbose debug output\n"
+            "\t--debug=[level]\t\tEquivalent to -d\n"
+            "\t-l [filename]\t\tSets the logfile\n"
+            "\t--logfile=[filename]\tEquivalent to -l\n"
+            "\t-h\t\t\tDisplays this dialog\n"
+            "\t--help\t\t\tEquivalent to -h\n"
+            "\t--silent\t\tRestricts all output to logs only\n"
+            "\t-v\t\t\tDisplays the version information of this program\n"
+            "\t--version\t\tEquivalent to -v\n"
+        , version );
 }
 
 /*
-     Handles a remote close call.
+     Handles commands sent to the server
 
      Input:
-     int connection - Socket connection to read from.
-     char* response - The constructed response to send back to the client.
-
-     Return Value:
-     The size of the response, or -1 if something fails.
+     int command    - The command to execute
+     int connectFD  - the connection file descriptorto the master client
 */
-int close_c( int connection, char* response ) {
-     writeLog( 3, "Close call recieved from client" );
+void handleCommand( int command, int connectFD ) {
+     char* list = (char*)malloc(100);
+     memset( list, 0, 100 );
 
-     int respSize = 0;
+     switch( command ) {
+          case c_list_slaves:
+               writeLog( 3, "Sending slave list" );
+               list = getClientListString( list, sizeof( list ), type_client_slave );
+               write( connectFD, list, strlen( list ) );
+               free( list );
+               break;
+          case c_claim:
+               writeLog( 3, "Claiming client" );
+               int claim_index = -1;
+               read( connectFD, &claim_index, sizeof( claim_index ) );
+               int claim_result = claim( claim_index );
 
-     // TODO: Implement this function.
+               if( claim_result == -1 ) {
+                    writeLog( 3, "Claim failed." );
+               } else {
+                    writeLog( 3, "Claim succeeded." );
+               }
 
-     return respSize;
-}
+               write( connectFD, &claim_result, sizeof( claim_result ) );
+               break;
+          case c_release:
+               writeLog( 3, "Releasing client" );
+               int release_index = -1;
+               read( connectFD, &release_index, sizeof( release_index ) );
+               int release_result = release( release_index );
 
-/*
-     Handles a remote read call.
+               if( release_result == -1 ) {
+                    writeLog( 3, "Release failed!" );
+               } else {
+                    writeLog( 3, "Release of client '%d' successful!", release_index );
+               }
 
-     Input:
-     int connection - Socket connection to read from.
-     char* response - The constructed response to send back to the client.
-
-     Return Value:
-     The size of the response, or -1 if something fails.
-*/
-int read_c( int connection, char* response ) {
-     writeLog( 3, "Read call recieved from client" );
-
-     int respSize = 0;
-
-     // TODO: Implement this function.
-
-     return respSize;
-}
-
-/*
-     Handles a remote write call.
-
-     Input:
-     int connection - Socket connection to read from.
-     char* response - The constructed response to send back to the client.
-
-     Return Value:
-     The size of the response, or -1 if something fails.
-*/
-int write_c( int connection, char* response ) {
-     writeLog( 3, "Write call recieved from client" );
-
-     int respSize = 0;
-
-     // TODO: Implement this function.
-
-     return respSize;
-}
-
-/*
-     Handles a remote seek call.
-
-     Input:
-     int connection - Socket connection to read from.
-     char* response - The constructed response to send back to the client.
-
-     Return Value:
-     The size of the response, or -1 if something fails.
-*/
-int seek_c( int connection, char* response ) {
-     writeLog( 3, "Seek call recieved from client" );
-
-     int respSize = 0;
-
-     // TODO: Implement this function.
-
-     return respSize;
-}
-
-/*
-     Handles a remote exec call.
-
-     Input:
-     int connection - Socket connection to read from.
-     char* response - The constructed response to send back to the client.
-
-     Return Value:
-     The size of the response, or -1 if something fails.
-*/
-int exec_c( int connection, char* response ) {
-     writeLog( 3, "Exec call recieved from client" );
-
-     int respSize = 0;
-
-     // TODO: Implement this function.
-
-     return respSize;
+               break;
+     }
 }

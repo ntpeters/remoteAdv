@@ -8,12 +8,18 @@
 #include <fcntl.h>
 #include <stdlib.h>
 
+static int     dbgLevel       = 1;
+static char*   logFile        = "default.log";
+static int     silentMode     = 0;
+
 /*
      Writes output to defined logfile and standard out with
      date/time stamp and associated log level.
      
      Can take formatted string like printf, with a varialbe sized list of
      variables.
+     
+     Prints errno when appropriate.
 
      Always adds new line to output.
 
@@ -37,9 +43,9 @@ void writeLog( int loglvl, char* str, ... ) {
      // Get current date/time
      char* date = getDateString();
 
-     // Prepare variable length args lis
+     // Prepare variable length args list
      va_list args;
-     va_start( args, str ); 
+     va_start( args, str );
      int max_va_list_size = 250;  // No way to determine size of list.  250 should be a good ceiling.
 
      // Allocate message variable
@@ -59,7 +65,9 @@ void writeLog( int loglvl, char* str, ... ) {
           // Write message to log
           write( log, msg, strlen( msg ) );
           // Write message to standard out too
-          write( 0, msg, strlen( msg ) );
+          if( !silentMode ) {
+               write( 0, msg, strlen( msg ) );
+          }
      // -1: Error
      } else if( loglvl == -1 ) {
           sprintf( msg, "%s\tERROR : ", date );
@@ -72,7 +80,9 @@ void writeLog( int loglvl, char* str, ... ) {
           // Write message to log
           write( log, msg, strlen( msg ) );
           // Write message to standard out too
-          write( 0, msg, strlen( msg ) );
+          if( !silentMode ) {
+               write( 0, msg, strlen( msg ) );
+          }
      // 0: Info
      } else if(loglvl == 0 ) {
           sprintf( msg, "%s\tINFO  : ", date );
@@ -81,7 +91,9 @@ void writeLog( int loglvl, char* str, ... ) {
           // Write message to log
           write( log, msg, strlen( msg ) );
           // Write message to standard out too
-          write( 0, msg, strlen( msg ) );
+          if( !silentMode ) {
+               write( 0, msg, strlen( msg ) );
+          }
      // 1: Warning
      } else if( loglvl == 1 && dbgLevel >= 1 ) {
           sprintf( msg, "%s\tWARN  : ", date );
@@ -90,7 +102,9 @@ void writeLog( int loglvl, char* str, ... ) {
           // Write message to log
           write( log, msg, strlen( msg ) );
           // Write message to standard out too
-          write( 0, msg, strlen( msg ) );
+          if( !silentMode ) {
+               write( 0, msg, strlen( msg ) );
+          }
      // 2: Debug
      } else if( loglvl == 2 && dbgLevel >= 2 ) {
           sprintf( msg, "%s\tDEBUG : ", date );
@@ -99,7 +113,9 @@ void writeLog( int loglvl, char* str, ... ) {
           // Write message to log
           write( log, msg, strlen( msg ) );
           // Write message to standard out too
-          write( 0, msg, strlen( msg ) );
+          if( !silentMode ) {
+               write( 0, msg, strlen( msg ) );
+          }
      // 3: Verbose
      } else if( loglvl == 3 && dbgLevel >= 3 ) {
           sprintf( msg, "%s\tDEBUG : ", date );
@@ -108,7 +124,9 @@ void writeLog( int loglvl, char* str, ... ) {
           // Write message to log
           write( log, msg, strlen( msg ) );
           // Write message to standard out too
-          write( 0, msg, strlen( msg ) );
+          if( !silentMode ) {
+               write( 0, msg, strlen( msg ) );
+          }
      }
 
      // free args list
@@ -166,10 +184,54 @@ char* getDateString() {
      return date;
 }
 
+/*
+     Sets the desired debug level for writing logs.
+
+     Debug Levels:
+     0  : Info           - Nessessary information regarding server operation
+     1  : Warnings       - Any circumstance that may not affect normal operation
+     2  : Debug          - Standard debug messages
+     3  : Debug-Verbose  - All debug messages
+
+     Input:
+     int level - desired debug level
+
+*/
 void setDebugLevel( int level ) {
-     dbgLevel = level;
+     if( level >= 0 && level <= 3 ) {
+          dbgLevel = level;
+     } else {
+          char* error = (char*)malloc(500);
+          sprintf( &error[ strlen( error ) ], "Invalid debug level of '%d'. Setting to default value of '%d'\n", level, dbgLevel );
+          sprintf( &error[ strlen( error ) ], "\t\t\t\tValid Debug Levels:\n");
+          sprintf( &error[ strlen( error ) ], "\t\t\t\t0  : Info\n" );
+          sprintf( &error[ strlen( error ) ], "\t\t\t\t1  : Warnings\n" );
+          sprintf( &error[ strlen( error ) ], "\t\t\t\t2  : Debug\n" );
+          sprintf( &error[ strlen( error ) ], "\t\t\t\t3  : Debug-Verbose" );
+
+          writeLog( -1, error );
+          free(error);
+     }
 }
 
+/*
+     Sets the filename for log output.
+
+     Input:
+     char* file - desired log output file
+*/
 void setLogFile( char* file ) {
      logFile = file;
+}
+
+/*
+     Enables/Disables silent mode.
+     When silent mode is enabled, no output will be written to standard out.
+     Log output will continue normally.
+
+     Input:
+     int silent - Desired state of silent mode: 0 = Disabled, 1 = Enabled
+*/
+void setSilentMode( int silent ) {
+     silentMode = silent;
 }
