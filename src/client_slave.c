@@ -26,6 +26,7 @@ int     client_type = type_client_slave;
 
 // Function Prototypes
 int authenticate( int sockfd );
+void death_handler( int signum );
 int open_c( int connection, OpHeader command, char* response );
 int close_c( int connection, OpHeader command, char* response );
 int read_c( int connection, OpHeader command, char* response );
@@ -33,7 +34,6 @@ int write_c( int connection, OpHeader command, char* response );
 int seek_c( int connection, OpHeader command, char* response );
 int exec_c( int connection, OpHeader command, char* response );
 int c_kill( int connection, OpHeader command, char* response );
-   
 
 /* Slave Client
    Takes no parameters */
@@ -41,87 +41,104 @@ int main(){
     setDebugLevel( dbgLevel );
     setLogFile( logFile );
 
+    // Ignore broken pipe signal when server disconnects
+    signal( SIGPIPE, death_handler );
+
     writeLog( 0, "Starting remoteAdv Slave Client - Version: %s", version );
     
-    // Gets a hostent struct containing data about the given host
-    struct hostent *server = gethostbyname( server_ip );
-    if(server == NULL) {
-        herror("ERROR: Host lookup failed");
-        exit(1);
-    }
+    // If the client is unexpectedly disconnected it will try to reconnect 3 times
+    for( int i = 0; i <= 3; i++ ) {
 
-    // Create a TCP socket and return a file descriptor for accessing it
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if(sockfd == -1) {
-        perror("ERROR: Open socket failed");
-        exit(1);
-    }
+        // Gets a hostent struct containing data about the given host
+        struct hostent *server = gethostbyname( server_ip );
+        if(server == NULL) {
+            herror("ERROR: Host lookup failed");
+            exit(1);
+        }
 
-    // Create and initialize a sock_addr struct contianing info about the server to connect to
-    struct sockaddr_in server_addr;
-    bzero((char *) &server_addr, sizeof(server_addr));
-    // Denotes an internet socket
-    server_addr.sin_family = AF_INET;
-    // Copies several values from the server hostent struct into this one
-    bcopy((char*)server->h_addr, (char*)&server_addr.sin_addr.s_addr, server->h_length);
-    // Sets the server port to the one passed in
-    server_addr.sin_port = server_port;
+        // Create a TCP socket and return a file descriptor for accessing it
+        int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+        if(sockfd == -1) {
+            perror("ERROR: Open socket failed");
+            exit(1);
+        }
 
-    // Connect to the server
-    int connectResult = connect(sockfd,(struct sockaddr*)&server_addr, sizeof(server_addr));
-    if(connectResult == -1) {
-        perror("ERROR: Connection to server failed");
-        exit(1);
-    }
+        // Create and initialize a sock_addr struct contianing info about the server to connect to
+        struct sockaddr_in server_addr;
+        bzero((char *) &server_addr, sizeof(server_addr));
+        // Denotes an internet socket
+        server_addr.sin_family = AF_INET;
+        // Copies several values from the server hostent struct into this one
+        bcopy((char*)server->h_addr, (char*)&server_addr.sin_addr.s_addr, server->h_length);
+        // Sets the server port to the one passed in
+        server_addr.sin_port = server_port;
 
-    int auth_result = authenticate( sockfd );
-    if( auth_result == -1 ) {
-        writeLog( -1, "Server authentication failed" );
-        exit(1);
-    } else {
-        writeLog( 2, "Server connection successful" );
-        writeLog( 3, "Connected to server at '%s:%d'", server_ip, server_port );
-    }
+        // Connect to the server
+        int connectResult = connect(sockfd,(struct sockaddr*)&server_addr, sizeof(server_addr));
+        if(connectResult == -1) {
+            //perror("ERROR: Connection to server failed");
+            writeLog( -1, "Connection to server failed. Retrying..." );
 
-    OpHeader command;
+            fflush( stdout );
+            sleep( 3 );
+            continue;
+        }
 
-    // Wait to recieve commands
-    while( read( sockfd, &command, sizeof( command ) ) != -1 ) {
-        int respSize = 0;
-        char* response = NULL;
-        
-        int opcode = command.opcode;
-        writeLog( 3, "Opcode Recieved: %d", opcode );
+        int auth_result = authenticate( sockfd );
+        if( auth_result == -1 ) {
+            writeLog( -1, "Server authentication failed" );
+            exit(1);
+        } else {
+            writeLog( 2, "Server connection successful" );
+            writeLog( 3, "Connected to server at '%s:%d'", server_ip, server_port );
+        }
 
-        switch( opcode ) {
-            case open_call: 
-                respSize = open_c( sockfd, command, response );
-                break;
-            case close_call:
-                respSize = close_c( sockfd, command, response );
-                break;
-            case read_call:
-                respSize = read_c( sockfd, command, response );
-                break;
-            case write_call:
-                respSize = write_c( sockfd, command, response );
-                break;
-            case seek_call:
-                respSize = seek_c( sockfd, command, response );
-                break;
-            case exec_call:
-                respSize = exec_c( sockfd, command, response );
-                break;
-            case c_master_kill_client:
-                respSize = c_kill( sockfd, command, response );
-            default:
-                writeLog( -1, "Invalid OpCode: %d", opcode );
-                break;
+        OpHeader command;
+        int read_result;
+
+        // Wait to recieve commands
+        while( ( read_result = read( sockfd, &command, sizeof( command ) ) ) ) {
+            int respSize = 0;
+            char* response = NULL;
+            
+            int opcode = command.opcode;
+            writeLog( 3, "Opcode Recieved: %d", opcode );
+
+            switch( opcode ) {
+                case open_call: 
+                    respSize = open_c( sockfd, command, response );
+                    break;
+                case close_call:
+                    respSize = close_c( sockfd, command, response );
+                    break;
+                case read_call:
+                    respSize = read_c( sockfd, command, response );
+                    break;
+                case write_call:
+                    respSize = write_c( sockfd, command, response );
+                    break;
+                case seek_call:
+                    respSize = seek_c( sockfd, command, response );
+                    break;
+                case exec_call:
+                    respSize = exec_c( sockfd, command, response );
+                    break;
+                case c_master_kill_client:
+                    respSize = c_kill( sockfd, command, response );
+                default:
+                    writeLog( -1, "Invalid OpCode: %d", opcode );
+                    break;
+            }
+        }
+
+        // Close the connection to the server
+        close(sockfd);
+
+        // If a bad read occured, we have been disconnected
+        if( read_result <= 0 ) {
+            death_handler(0);
         }
     }
-
-    // Close the connection to the server
-    close(sockfd);
 
     return 0;
 }
@@ -151,6 +168,21 @@ int authenticate( int sockfd ) {
     } else { 
         return -1;
     }
+}
+
+/*
+    Handles unexpected disconnects from the server.
+    Only logs messages and then returns flow back to the main program.
+
+    Input:
+    int signum - The signal this handler is handling. '0' if no signal.
+*/
+void death_handler( int signum ) {
+    if( signum == SIGPIPE ) {
+        writeLog( 1, "Pipe broken signal received" );
+    }
+
+    writeLog( 1, "Server unexpectedly disconnected! Trying to reconnect..." );
 }
 
 /*

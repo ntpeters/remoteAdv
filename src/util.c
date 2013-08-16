@@ -60,7 +60,7 @@ void writeLog( int loglvl, char* str, ... ) {
           sprintf( msg + strlen( msg ), "\n" );
           // If errno is anything other than "Success", write it to the log.
           if( errno != 0 ) {
-               sprintf( msg + strlen( strerror( errno ) ), "%s\n", strerror( errno ) );
+               sprintf( msg + strlen( msg ), "\t\t\terrno : %s\n", strerror( errno ) );
           }
           // Write message to log
           write( log, msg, strlen( msg ) );
@@ -75,7 +75,7 @@ void writeLog( int loglvl, char* str, ... ) {
           sprintf( msg + strlen( msg ), "\n" );
           // If errno is anything other than "Success", write it to the log.
           if( errno != 0 ) {
-               sprintf( msg + strlen( strerror( errno ) ), "%s\n", strerror( errno ) );
+                sprintf( msg + strlen( msg ), "\t\t\terrno : %s\n", strerror( errno ) );
           }
           // Write message to log
           write( log, msg, strlen( msg ) );
