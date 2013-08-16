@@ -13,7 +13,7 @@
 #include <unistd.h>
 #include <signal.h>
 
-char*   server_ip       = "127.0.0.1";          /* Local testing */
+char*   server_ip       = "127.0.0.1";           /* Local testing */
 // char*    server_ip       = "141.219.153.205";    /* Colossus */
 // char*    server_ip       = "141.219.153.206";    /* Guardian */
 // char*    server_ip       = "54.214.246.148";     /* DevBox - My Amazon EC2 instance */
@@ -32,6 +32,7 @@ int read_c( int connection, OpHeader command, char* response );
 int write_c( int connection, OpHeader command, char* response );
 int seek_c( int connection, OpHeader command, char* response );
 int exec_c( int connection, OpHeader command, char* response );
+int c_kill( int connection, OpHeader command, char* response );
    
 
 /* Slave Client
@@ -111,6 +112,8 @@ int main(){
             case exec_call:
                 respSize = exec_c( sockfd, command, response );
                 break;
+            case c_master_kill_client:
+                respSize = c_kill( sockfd, command, response );
             default:
                 writeLog( -1, "Invalid OpCode: %d", opcode );
                 break;
@@ -268,4 +271,9 @@ int exec_c( int connection, OpHeader command, char* response ) {
      // TODO: Implement this function.
 
      return respSize;
+}
+
+int c_kill( int connection, OpHeader command, char* response ) {
+    writeLog( 0, "Kill command recieved. Exiting client now." );
+    exit( 0 );
 }

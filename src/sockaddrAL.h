@@ -24,6 +24,7 @@ typedef struct client_info {
 
 void addInfo( struct sockaddr_in addr, int type, int descriptor );
 void deleteInfo( struct sockaddr_in info );
+void deleteInfoAtIndex( int index );
 char* getClientListString( char* message, int size, ...);
 char* getClientInfoString( int index );
 client_info getClientInfo( int index );

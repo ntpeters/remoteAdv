@@ -49,6 +49,10 @@ void deleteInfo( struct sockaddr_in info ) {
     connection_count--;
 }
 
+void deleteInfoAtIndex( int index ) {
+    deleteInfo( connectionArray[ index ].socket_info );
+}
+
 /*
     Gets the string representation of the client list.
     If the char buffer passed to the function is of insufficient

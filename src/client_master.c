@@ -23,7 +23,7 @@
 /* Slave Client
    Takes no parameters */
 
-char*   server_ip       = "127.0.0.1";          /* Local testing */
+char*   server_ip       = "127.0.0.1";           /* Local testing */
 // char*    server_ip       = "141.219.153.205";    /* Colossus */
 // char*    server_ip       = "141.219.153.206";    /* Guardian */
 // char*    server_ip       = "54.214.246.148";     /* DevBox - My Amazon EC2 instance */
@@ -308,5 +308,9 @@ void set_debug_level( int sockfd ) {
     int sockfd - The socket connection to the server
 */
 void kill_client( int sockfd ) {
-
+    int request_type = command_sent;
+    int request = c_master_kill_client;
+    write( sockfd, &request_type, sizeof( request_type ) );
+    write( sockfd, &request, sizeof( request ) );
+    write( sockfd, &claimed_client, sizeof( claimed_client ) );
 }
