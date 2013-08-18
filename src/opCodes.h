@@ -1,24 +1,28 @@
 #ifndef OPCODE
 #define OPCODE
 
-#define type_client_master 777
-#define type_client_manager 666
-#define type_client_slave 420
+#define type_client_master    777
+#define type_client_manager   666
+#define type_client_slave     420
+#define type_server           999
 
-#define open_call 1
-#define close_call 2
-#define read_call 3
-#define write_call 4
-#define seek_call 5
-#define execute_call 6
+#define opcode_sent           0
+#define open_call             1
+#define close_call            2
+#define read_call             3
+#define write_call            4
+#define seek_call             5
+#define exec_call             6
 
 // Commands
-#define c_claim 20
-#define c_release 21
-#define c_list_slaves 22
-#define c_masterlist 23
-#define c_master_release 24
-#define c_master_set_dbglvl 25 
+#define command_sent          20
+#define c_claim               21
+#define c_release             22
+#define c_list_slaves         23
+#define c_masterlist          24
+#define c_master_release      25
+#define c_master_set_dbglvl   26
+#define c_master_kill_client  99
 
 #include <sys/stat.h>
 #include <sys/socket.h>
