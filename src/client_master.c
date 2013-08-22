@@ -167,7 +167,7 @@ int authenticate( int sockfd ) {
 void printMenu() {
     printf( "remoteAdv Master Client - Version: %s\n", version );
     printf( "-------------------\n");
-    printf( "Select an action\n" );
+    printf( "Main Menu\n" );
     printf( "-------------------\n");
     printf( "1 - List Slaves\n" );
     printf( "2 - Claim Client\n" );
@@ -176,6 +176,7 @@ void printMenu() {
     printf( "5 - Kill Client\n" );
     printf( "6 - Exit\n");
     printf( "-------------------\n");
+    printf( "Select Action: " );
 }
 
 /*
@@ -298,7 +299,8 @@ void release_client( int sockfd ) {
     int sockfd - The socket connection to the server
 */
 void set_debug_level( int sockfd ) {
-
+    printf( "\n---Not implemented!---\n" );
+    sleep(1);
 }
 
 /*
@@ -308,9 +310,24 @@ void set_debug_level( int sockfd ) {
     int sockfd - The socket connection to the server
 */
 void kill_client( int sockfd ) {
-    int request_type = command_sent;
-    int request = c_master_kill_client;
-    write( sockfd, &request_type, sizeof( request_type ) );
-    write( sockfd, &request, sizeof( request ) );
-    write( sockfd, &claimed_client, sizeof( claimed_client ) );
+    if( claimed_client == -1 ) {
+        printf( "Can't Kill: No client claimed\n" );
+        printf( "\nPress 'Enter' to return to the menu..." );
+
+        getchar();
+        getchar();
+    } else {
+        printf( "Are you sure you want to release the currenlty claimed client? (y/n) " );
+        char confirm;
+        getchar();
+        scanf( "%c", &confirm );
+
+        if( confirm == 'y' ) {
+            int request_type = command_sent;
+            int request = c_master_kill_client;
+            write( sockfd, &request_type, sizeof( request_type ) );
+            write( sockfd, &request, sizeof( request ) );
+            write( sockfd, &claimed_client, sizeof( claimed_client ) );
+        }
+    }
 }
