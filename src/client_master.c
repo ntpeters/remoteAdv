@@ -66,11 +66,11 @@ int main(){
 
 	// Create and initialize a sock_addr struct contianing info about the server to connect to
 	struct sockaddr_in server_addr;
-	bzero((char *) &server_addr, sizeof(server_addr));
+	server_addr = memset( &server_addr , 0 , sizeof(server_addr));
 	// Denotes an internet socket
     server_addr.sin_family = AF_INET;
     // Copies several values from the server hostent struct into this one
-    bcopy((char*)server->h_addr, (char*)&server_addr.sin_addr.s_addr, server->h_length);
+	server_addr.sin_addr.s_addr = memcpy( server->h_addr , server_addr.sin_addr.s_addr , server->h_length );
     // Sets the server port to the one passed in
     server_addr.sin_port = server_port;
 
@@ -94,14 +94,15 @@ int main(){
 
     // Wait to send commands
     while( !end ) {
-    	printMenu();
+
+    	printMenu(); // Display options to allow user to see options.
 
     	int input = 0;
     	scanf( "%d", &input );
 
     	switch( input ) {
     		case sel_list_slaves:
-    			system( "clear" );
+    			system( "clear" );      // Clear works on unix like enviorments, this will throw an error on windows.
     			list_slaves( sockfd );
     			break;
     		case sel_claim_client:
@@ -152,12 +153,7 @@ int authenticate( int sockfd ) {
     write( sockfd, &client_type, sizeof( client_type ) );
     // Recieve response from server
     read( sockfd, &response, sizeof( response ) );
-
-    if( response == type_server ) {
-    	return 0;
-    } else { 
-    	return -1;
-    }
+    return ( response == type_server ) ? 0 : -1;
 }
 
 /*
@@ -188,7 +184,7 @@ void list_slaves( int sockfd ) {
 	int request_type = command_sent;
 	int request = c_list_slaves;
 
-    write( sockfd, &request_type, sizeof( int ) );
+	write( sockfd, &request_type, sizeof( int ) );
 	write( sockfd, &request, sizeof( request ) );
 
 	char* response = (char*)malloc(1000);
@@ -269,11 +265,10 @@ void release_client( int sockfd ) {
 	if( claimed_client == -1 ) {
 		printf( "Can't Release: No client claimed\n" );
 		printf( "\nPress 'Enter' to return to the menu..." );
-
 		getchar();
 		getchar();
 	} else {
-		printf( "Are you sure you want to release the currenlty claimed client? (y/n) " );
+		printf( "Are you sure you want to release the currently claimed client? (y/n)" );
 		char confirm;
 		getchar();
 		scanf( "%c", &confirm );
@@ -282,7 +277,7 @@ void release_client( int sockfd ) {
 			int request_type = command_sent;
 			int request = c_release;
 
-		    write( sockfd, &request_type, sizeof( int ) );
+			write( sockfd, &request_type, sizeof( int ) );
 			write( sockfd, &request, sizeof( request ) );
 
 			write( sockfd, &claimed_client, sizeof( claimed_client ) );
@@ -297,6 +292,18 @@ void release_client( int sockfd ) {
 	int sockfd - The socket connection to the server
 */
 void set_debug_level( int sockfd ) {
+
+	printf(" Enter the level of debug to enable.\n\t None --- 0\n\t Warnings --- 1\n\t Basic --- 2\n\t Verbose --- 3 ");
+	scanf( "%d" , &input );
+
+	int input;
+	int request_type = command_sent;
+	int request = c_master_set_dbglvl;
+
+	write( sockfd, &request_type, sizeof( int ) );
+	write( sockfd, &request, sizeof( request ) );
+
+
 
 }
 

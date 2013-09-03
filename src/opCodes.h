@@ -24,6 +24,13 @@
 #define c_master_set_dbglvl   26
 #define c_master_kill_client  99
 
+
+// Debug Levels
+#define dbg_none     0
+#define dbg_warnings 1
+#define dbg_basic    2
+#define dbg_verbose  3
+
 #include <sys/stat.h>
 #include <sys/socket.h>
 

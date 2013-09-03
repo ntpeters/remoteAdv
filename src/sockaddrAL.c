@@ -70,23 +70,14 @@ char* getClientListString( char* message, int size, ... ) {
     int printFlag = (int)va_arg( args, int );
     char printType[8];
 
-    if( printFlag == type_client_slave ) {
-    	strcpy( printType, "slave" );
-    } else if( printFlag == type_client_manager ) {
-    	strcpy( printType, "manager" );
-    } else if( printFlag == type_client_master ) {
-    	strcpy( printType, "master" );
-    } else {
-    	strcpy( printType, "all" );
+    switch( printFlag ){
+    	case type_client_slave:   strcpy( printType, "slave" );   break;
+    	case type_client_manager: strcpy( printType, "manager" ); break;
+		case type_client_master:  strcpy( printType, "master" );  break;
+		default:                  strcpy( printType, "all" );     break;	
     }
 
-	int message_size = 	( ( client_type_name_length +
-					   		sizeof( int ) +
-					   		client_ip_address_length
-					   	  ) *
-						  connection_count
-						) +
-					   	165;
+	int message_size = 	( ( client_type_name_length + sizeof( int ) + client_ip_address_length ) * connection_count	) +	165;
 
 	if( message_size > size ) {
 		message = realloc( message, message_size );
