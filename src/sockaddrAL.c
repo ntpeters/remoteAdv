@@ -74,54 +74,45 @@ char* getClientListString( char* message, int size, ... ) {
     int printFlag = (int)va_arg( args, int );
     char printType[8];
 
-    if( printFlag == type_client_slave ) {
-        strcpy( printType, "slave" );
-    } else if( printFlag == type_client_manager ) {
-        strcpy( printType, "manager" );
-    } else if( printFlag == type_client_master ) {
-        strcpy( printType, "master" );
-    } else {
-        strcpy( printType, "all" );
+    switch( printFlag ){
+    	case type_client_slave:   strcpy( printType, "slave" );   break;
+    	case type_client_manager: strcpy( printType, "manager" ); break;
+		case type_client_master:  strcpy( printType, "master" );  break;
+		default:                  strcpy( printType, "all" );     break;
     }
 
-    int message_size =  ( ( client_type_name_length +
-                            sizeof( int ) +
-                            client_ip_address_length
-                          ) *
-                          connection_count
-                        ) +
-                        165;
+	int message_size = 	( ( client_type_name_length + sizeof( int ) + client_ip_address_length ) * connection_count	) +	165;
 
-    if( message_size > size ) {
-        message = realloc( message, message_size );
-    }
-    
-    // Write info header
-    sprintf( message,
-        "\n--------------------------------------------------------\n"
-        "Index\tClient Type\tIP Address\tPort\tClaimed?\n"
-        "--------------------------------------------------------\n"
-        );
+	if( message_size > size ) {
+		message = realloc( message, message_size );
+	}
+	
+	// Write info header
+	sprintf( message,
+		"\n--------------------------------------------------------\n"
+		"Index\tClient Type\tIP Address\tPort\tClaimed?\n"
+		"--------------------------------------------------------\n"
+		);
 
-    for( int i = 0; i < connection_count; i++ ) {
-        client_info client = getClientInfo( i );
+	for( int i = 0; i < connection_count; i++ ) {
+		client_info client = getClientInfo( i );
 
-        if( strcmp( client.type, printType ) && strcmp( printType, "all" ) ) {
-            continue;
-        }
+		if( strcmp( client.type, printType ) && strcmp( printType, "all" ) ) {
+			continue;
+		}
 
-        char* type      = client.type;
-        char* ip        = client.ip;
-        int port        = client.port;
-        char* claimed   = client.claimed;
+		char* type 		= client.type;
+		char* ip		= client.ip;
+		int port 		= client.port;
+		char* claimed 	= client.claimed;
 
-        // Get the offset for writing the message
-        int offset = strlen( message );
-        // Write the data to the message
-        sprintf( &message[ offset ], "%d\t%s\t\t%s\t%d\t%s\n", i, type, ip, port, claimed );
-    }
+		// Get the offset for writing the message
+		int offset = strlen( message );
+		// Write the data to the message
+		sprintf( &message[ offset ], "%d\t%s\t\t%s\t%d\t%s\n", i, type, ip, port, claimed );
+	}
 
-    return message;
+	return message;
 }
 
 /*

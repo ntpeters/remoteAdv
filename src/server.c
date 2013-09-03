@@ -21,15 +21,7 @@
 /* 54.214.246.148 for my Amazon EC2 instance */
 
 // Global Variables
-/*
-     User defined
-     Debug Levels:
-     0 = none
-     1 = warnings only (default)
-     2 = basic debug
-     3 = verbose debug
-*/
-int dbgLevel = 3;
+int dbgLevel = dbg_verbose;
 int server_portnumber = 51739;     // Port must be constant due to the nature of this project
 char* logFile = "server.log";
 char* version = "Development Build";
@@ -140,7 +132,7 @@ int main( int argc , char* argv[] ) {
                addInfo( s2, client_type, connectFD );
                writeLog( 3, "Client added. Descriptor: %d", connectFD );
 
-               char* list = (char*)malloc(100);
+               char* list = (char*)malloc(1000);
                list = getClientListString( list, sizeof( list ) );
           }
           
@@ -161,7 +153,6 @@ int main( int argc , char* argv[] ) {
                     switch( select ) {
                          case opcode_sent:
                               read( connectFD, &op, sizeof( op ) );
-
                               int connection = getConnection( 0 );
                               write( connection, &op, sizeof( op ) );
                               writeLog( 3, "Opcode '%d' sent to slave client", op.opcode );
@@ -229,10 +220,16 @@ void printHelp() {
      int connectFD  - the connection file descriptorto the master client
 */
 void handleCommand( int command, int connectFD ) {
-     char* list = (char*)malloc(100);
-     memset( list, 0, 100 );
+    char* list = (char*)malloc(1000);
+     memset( list, 0, 1000 );
 
      switch( command ) {
+          case c_master_set_dbglvl:
+              writeLog( 3 , "Setting Debug Level" );
+              int newDbgValue;
+              read( connectFD , &newDbgValue , sizeof(newDbgValue) );
+              // TODO: Set global debug value on parent?
+              break;
           case c_list_slaves:
                writeLog( 3, "Sending slave list" );
                list = getClientListString( list, sizeof( list ), type_client_slave );

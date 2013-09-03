@@ -45,33 +45,33 @@ void set_debug_level( int sockfd );
 void kill_client( int sockfd );
    
 int main(){
-    setDebugLevel( dbgLevel );
-    setLogFile( logFile );
-    setSilentMode(1);
+	setDebugLevel( dbgLevel );
+	setLogFile( logFile );
+	setSilentMode(1);
 
-    writeLog( 0, "Starting remoteAdv Master Client - Version: %s", version );
-    
-    // Gets a hostent struct containing data about the given host
-    struct hostent *server = gethostbyname( server_ip );
-    if(server == NULL) {
-        herror("ERROR: Host lookup failed");
-        exit(1);
-    }
+	writeLog( 0, "Starting remoteAdv Master Client - Version: %s", version );
+	
+	// Gets a hostent struct containing data about the given host
+	struct hostent *server = gethostbyname( server_ip );
+	if(server == NULL) {
+		herror("ERROR: Host lookup failed");
+		exit(1);
+	}
 
-    // Create a TCP socket and return a file descriptor for accessing it
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if(sockfd == -1) {
-        perror("ERROR: Open socket failed");
-        exit(1);
-    }
+	// Create a TCP socket and return a file descriptor for accessing it
+	int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if(sockfd == -1) {
+		perror("ERROR: Open socket failed");
+		exit(1);
+	}
 
-    // Create and initialize a sock_addr struct contianing info about the server to connect to
-    struct sockaddr_in server_addr;
-    bzero((char *) &server_addr, sizeof(server_addr));
-    // Denotes an internet socket
+	// Create and initialize a sock_addr struct contianing info about the server to connect to
+	struct sockaddr_in server_addr;
+	memset( &server_addr , 0 , sizeof(server_addr));
+	// Denotes an internet socket
     server_addr.sin_family = AF_INET;
     // Copies several values from the server hostent struct into this one
-    bcopy((char*)server->h_addr, (char*)&server_addr.sin_addr.s_addr, server->h_length);
+	memcpy( &server_addr.sin_addr.s_addr, server->h_addr, server->h_length );
     // Sets the server port to the one passed in
     server_addr.sin_port = server_port;
 
@@ -95,37 +95,37 @@ int main(){
 
     // Wait to send commands
     while( !end ) {
-        printMenu();
+    	printMenu(); // Display options to allow user to see options.
 
-        int input = 0;
-        scanf( "%d", &input );
+    	int input = 0;
+    	scanf( "%d", &input );
 
-        switch( input ) {
-            case sel_list_slaves:
-                system( "clear" );
-                list_slaves( sockfd );
-                break;
-            case sel_claim_client:
-                system( "clear" );
-                claim_client( sockfd );
-                break;
-            case sel_release_client:
-                release_client( sockfd );
-                break;
-            case sel_set_debug_level:
-                set_debug_level( sockfd );
-                break;
-            case sel_kill_client:
-                kill_client( sockfd );
-                break;
-            case sel_close:
-                end = 1;
-            default:
-                break;
-        }
+    	switch( input ) {
+    		case sel_list_slaves:
+    			system( "clear" );      // Clear works on unix like enviorments, this will throw an error on windows.
+    			list_slaves( sockfd );
+    			break;
+    		case sel_claim_client:
+    			system( "clear" );
+    			claim_client( sockfd );
+    			break;
+    		case sel_release_client:
+    			release_client( sockfd );
+    			break;
+    		case sel_set_debug_level:
+    			set_debug_level( sockfd );
+    			break;
+    		case sel_kill_client:
+    			kill_client( sockfd );
+    			break;
+    		case sel_close:
+    			end = 1;
+    		default:
+    			break;
+    	}
 
-        fflush( stdout );
-        system( "clear" );
+    	fflush( stdout );
+    	system( "clear" );
     }
 
     // Close the connection to the server
@@ -154,11 +154,7 @@ int authenticate( int sockfd ) {
     // Recieve response from server
     read( sockfd, &response, sizeof( response ) );
 
-    if( response == type_server ) {
-        return 0;
-    } else { 
-        return -1;
-    }
+    return ( response == type_server ) ? 0 : -1;
 }
 
 /*
@@ -299,8 +295,15 @@ void release_client( int sockfd ) {
     int sockfd - The socket connection to the server
 */
 void set_debug_level( int sockfd ) {
-    printf( "\n---Not implemented!---\n" );
-    sleep(1);
+    int input;
+    int request_type = command_sent;
+    int request = c_master_set_dbglvl;
+
+	printf(" Enter the level of debug to enable.\n\t None --- 0\n\t Warnings --- 1\n\t Basic --- 2\n\t Verbose --- 3 ");
+	scanf( "%d" , &input );
+
+	write( sockfd, &request_type, sizeof( int ) );
+	write( sockfd, &request, sizeof( request ) );
 }
 
 /*

@@ -52,73 +52,34 @@ void writeLog( int loglvl, char* str, ... ) {
      int msgSize = strlen( str ) + strlen ( date ) + strlen( strerror( errno ) ) + 10;  // 10 char buffer to prevent overflow
      char* msg = malloc( msgSize + max_va_list_size );
 
-    
-     // -2: Fatal
-     if( loglvl == -2 ) {
-          sprintf( msg, "%s\tFATAL : ", date );
-          vsprintf( msg + strlen( msg ), str, args );
-          sprintf( msg + strlen( msg ), "\n" );
-          // If errno is anything other than "Success", write it to the log.
-          if( errno != 0 ) {
-               sprintf( msg + strlen( msg ), "\t\t\terrno : %s\n", strerror( errno ) );
+     if( loglvl < 0 ){
+          if( loglvl == -2 ) {
+               sprintf( msg, "%s\tFATAL : ", date );      // -2: Fatal
+          } else { // (Remove Comment Later) Only other possible option is -1
+               sprintf( msg, "%s\tERROR : ", date );      // -1: Error
           }
-          // Write message to log
-          write( log, msg, strlen( msg ) );
-          // Write message to standard out too
-          if( !silentMode ) {
-               write( 0, msg, strlen( msg ) );
+               vsprintf( msg + strlen( msg ), str, args );
+               sprintf( msg + strlen( msg ), "\n" );
+               // If errno is anything other than "Success", write it to the log.
+               if( errno != 0 ) {
+                    sprintf( msg + strlen( strerror( errno ) ), "%s\n", strerror( errno ) );
+               }
+               // Write message to log
+               write( log, msg, strlen( msg ) );
+               // Write message to standard out too
+               if( !silentMode ) {
+                    write( 0, msg, strlen( msg ) );
           }
-     // -1: Error
-     } else if( loglvl == -1 ) {
-          sprintf( msg, "%s\tERROR : ", date );
-          vsprintf( msg + strlen( msg ), str, args );
-          sprintf( msg + strlen( msg ), "\n" );
-          // If errno is anything other than "Success", write it to the log.
-          if( errno != 0 ) {
-                sprintf( msg + strlen( msg ), "\t\t\terrno : %s\n", strerror( errno ) );
+     } else {
+          if( loglvl == 0 ) {
+               sprintf( msg, "%s\tINFO  : ", date );      // 0: Info
+          } else if( loglvl == 1 && dbgLevel >= 1 ) {
+               sprintf( msg, "%s\tWARN  : ", date );      // 1: Warning
+          } else if( loglvl == 2 && dbgLevel >= 2 ) {
+               sprintf( msg, "%s\tDEBUG : ", date );      // 2: Debug
+          } else if( loglvl == 3 && dbgLevel >= 3 ) {
+               sprintf( msg, "%s\tDEBUG : ", date );      // 3: Verbose
           }
-          // Write message to log
-          write( log, msg, strlen( msg ) );
-          // Write message to standard out too
-          if( !silentMode ) {
-               write( 0, msg, strlen( msg ) );
-          }
-     // 0: Info
-     } else if(loglvl == 0 ) {
-          sprintf( msg, "%s\tINFO  : ", date );
-          vsprintf( msg + strlen( msg ), str, args );
-          sprintf( msg + strlen( msg ), "\n" );
-          // Write message to log
-          write( log, msg, strlen( msg ) );
-          // Write message to standard out too
-          if( !silentMode ) {
-               write( 0, msg, strlen( msg ) );
-          }
-     // 1: Warning
-     } else if( loglvl == 1 && dbgLevel >= 1 ) {
-          sprintf( msg, "%s\tWARN  : ", date );
-          vsprintf( msg + strlen( msg ), str, args );
-          sprintf( msg + strlen( msg ), "\n" );
-          // Write message to log
-          write( log, msg, strlen( msg ) );
-          // Write message to standard out too
-          if( !silentMode ) {
-               write( 0, msg, strlen( msg ) );
-          }
-     // 2: Debug
-     } else if( loglvl == 2 && dbgLevel >= 2 ) {
-          sprintf( msg, "%s\tDEBUG : ", date );
-          vsprintf( msg + strlen( msg ), str, args );
-          sprintf( msg + strlen( msg ), "\n" );
-          // Write message to log
-          write( log, msg, strlen( msg ) );
-          // Write message to standard out too
-          if( !silentMode ) {
-               write( 0, msg, strlen( msg ) );
-          }
-     // 3: Verbose
-     } else if( loglvl == 3 && dbgLevel >= 3 ) {
-          sprintf( msg, "%s\tDEBUG : ", date );
           vsprintf( msg + strlen( msg ), str, args );
           sprintf( msg + strlen( msg ), "\n" );
           // Write message to log
@@ -128,7 +89,6 @@ void writeLog( int loglvl, char* str, ... ) {
                write( 0, msg, strlen( msg ) );
           }
      }
-
      // free args list
      va_end( args );
 
@@ -155,33 +115,34 @@ char* getDateString() {
 
      sprintf( date, "[%d-", year );
      // Add zero for single digit values
-     if( month < 10) {
+     if( month < 10 ) {
           sprintf( date + strlen( date ), "0%d-", month );
      } else {
           sprintf( date + strlen( date ), "%d-", month );
      }
-     if( day < 10) {
+     if( day < 10 ) {
           sprintf( date + strlen( date ), "0%d ", day );
      } else {
           sprintf( date + strlen( date ), "%d ", day );
      }
-     if( hour < 10) {
+     if( hour < 10 ) {
           sprintf( date + strlen( date ), "0%d:", hour );
      } else {
           sprintf( date + strlen( date ), "%d:", hour );
      }
-     if( min < 10) {
+     if( min < 10 ) {
           sprintf( date + strlen( date ), "0%d:", min );
      } else {
           sprintf( date + strlen( date ), "%d:", min );
      }
-     if( sec < 10) {
+     if( sec < 10 ) {
           sprintf( date + strlen( date ), "0%d]", sec );
      } else {
           sprintf( date + strlen( date ), "%d]", sec );
      }
-
      return date;
+
+     // TODO: Simplify
 }
 
 /*
@@ -195,7 +156,6 @@ char* getDateString() {
 
      Input:
      int level - desired debug level
-
 */
 void setDebugLevel( int level ) {
      if( level >= 0 && level <= 3 ) {
