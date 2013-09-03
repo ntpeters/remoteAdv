@@ -14,11 +14,11 @@ client_slave: ./bin/client_slave
 client_master: ./bin/client_master
 
 ./bin/%: ./src/%.o ./src/sockaddrAL.o ./src/util.o
-			mkdir -p ./bin/
-	        $(CC) $(CFLAGS) -o $@ $^
+		mkdir -p ./bin/
+		$(CC) $(CFLAGS) -o $@ $^
 
 .c.o:
-	        $(CC) $(CFLAGS) -c $< -o $@
+		$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	        @rm -f $(EXECS) ./src/*.o 
+		@rm -f $(EXECS) ./src/*.o 

@@ -261,7 +261,22 @@ void handleCommand( int command, int connectFD ) {
                } else {
                     writeLog( 3, "Release of client '%d' successful!", release_index );
                }
-
                break;
+        case c_master_kill_client:
+            writeLog( 3, "Killing slave" );
+
+            OpHeader op = {
+                .opcode = c_master_kill_client,
+            };
+
+            int kill_index = -1;
+            read( connectFD, &kill_index, sizeof( kill_index ) );
+            int kill_fd = getConnection( kill_index );
+            write( kill_fd , &op, sizeof( op ) );
+
+            close( kill_fd );
+            deleteInfoAtIndex( kill_index );
+
+            break;
      }
 }

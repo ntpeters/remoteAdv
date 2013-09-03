@@ -52,7 +52,6 @@ void writeLog( int loglvl, char* str, ... ) {
      int msgSize = strlen( str ) + strlen ( date ) + strlen( strerror( errno ) ) + 10;  // 10 char buffer to prevent overflow
      char* msg = malloc( msgSize + max_va_list_size );
 
-    
      if( loglvl < 0 ){
           if( loglvl == -2 ) {
                sprintf( msg, "%s\tFATAL : ", date );      // -2: Fatal
