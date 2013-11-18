@@ -1,6 +1,7 @@
 #include "opCodes.h"
 #include "sockaddrAL.h"
-#include "util.h"
+//#include "util.h"
+#include "simplog.h"
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -72,9 +73,9 @@ int main( int argc , char* argv[] ) {
      }
 
      // Initilize settings based on argument input
-     setDebugLevel( dbgLevel );
+     setLogDebugLevel( dbgLevel );
      setLogFile( logFile );
-     setSilentMode( silentMode );
+     setLogSilentMode( silentMode );
 
 
      // Begin setting up server

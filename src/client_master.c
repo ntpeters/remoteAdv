@@ -1,5 +1,6 @@
 #include "opCodes.h"
-#include "util.h"
+//#include "util.h"
+#include "simplog.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>
@@ -45,9 +46,9 @@ void set_debug_level( int sockfd );
 void kill_client( int sockfd );
    
 int main(){
-	setDebugLevel( dbgLevel );
+	setLogDebugLevel( dbgLevel );
 	setLogFile( logFile );
-	setSilentMode(1);
+	setLogSilentMode(1);
 
 	writeLog( 0, "Starting remoteAdv Master Client - Version: %s", version );
 	

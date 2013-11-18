@@ -1,6 +1,7 @@
 #include "sockaddrAL.h"
 #include "opCodes.h"
-#include "util.h"
+//#include "util.h"
+#include "simplog.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -1,5 +1,6 @@
 #include "opCodes.h"
-#include "util.h"
+//#include "util.h"
+#include "simplog.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>
@@ -38,7 +39,7 @@ int c_kill( int connection, OpHeader command, char* response );
 /* Slave Client
    Takes no parameters */
 int main(){
-    setDebugLevel( dbgLevel );
+    setLogDebugLevel( dbgLevel );
     setLogFile( logFile );
 
     // Ignore broken pipe signal when server disconnects
