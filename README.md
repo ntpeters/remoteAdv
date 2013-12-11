@@ -1,3 +1,6 @@
+This project has been migrated to GitHub from its original location on BitBucket.
+View the original repository here: https://bitbucket.org/xjzhang/remoteadv
+
 The purpose of this project is to provide an easy means of remotely connecting
 to an unsuspecting "infected" user's computer and executing various commands in
 the background.  These commands will primarily be for the purpose of trolling
