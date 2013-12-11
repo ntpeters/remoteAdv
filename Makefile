@@ -13,7 +13,7 @@ client_slave: ./bin/client_slave
 .PHONY: client_master
 client_master: ./bin/client_master
 
-./bin/%: ./src/%.o ./src/sockaddrAL.o ./src/simplog.o
+./bin/%: ./src/%.o ./src/sockaddrAL.o ./src/SimpleLogger/simplog.o
 		mkdir -p ./bin/
 		$(CC) $(CFLAGS) -o $@ $^
 

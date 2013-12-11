@@ -1,6 +1,5 @@
 #include "opCodes.h"
-//#include "util.h"
-#include "simplog.h"
+#include "SimpleLogger/simplog.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>
